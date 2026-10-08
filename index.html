@@ -1,0 +1,1751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Development Portfolio Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+  :root{
+    --ink:#12172B;
+    --ink-soft:#252B45;
+    --paper:#F6F7F9;
+    --surface:#FFFFFF;
+    --line:#E3E6EC;
+    --text:#12172B;
+    --text-soft:#5B6478;
+    --text-faint:#8B92A6;
+    --accent:#4C5FD5;
+    --accent-soft:#EEF0FC;
+    --gold:#D69A3C;
+    --gold-soft:#FBF2E1;
+    --good:#2E9E6B;
+    --good-soft:#E7F6EE;
+    --danger:#C74366;
+    --danger-soft:#FDEAEF;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Inter',system-ui,sans-serif;
+    background:var(--paper);
+    color:var(--text);
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{display:flex;min-height:100vh;}
+
+  /* ---------- SIDEBAR ---------- */
+  .sidebar{
+    width:250px;
+    flex-shrink:0;
+    background:var(--ink);
+    color:#fff;
+    display:flex;
+    flex-direction:column;
+    padding:28px 20px;
+    position:sticky;
+    top:0;
+    height:100vh;
+  }
+  .brand{
+    font-size:12px;
+    letter-spacing:.02em;
+    color:#8891B8;
+    margin-bottom:32px;
+    font-weight:600;
+  }
+  .profile-card{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    margin-bottom:24px;
+  }
+  .avatar{
+    width:44px;height:44px;border-radius:50%;
+    background:linear-gradient(135deg,var(--accent),#7B8AF0);
+    display:flex;align-items:center;justify-content:center;
+    font-weight:700;font-size:15px;flex-shrink:0;
+  }
+  .profile-name{font-size:15px;font-weight:700;line-height:1.3;}
+  .profile-role{font-size:12.5px;color:#9BA2C4;margin-top:2px;}
+
+  .page-edit-toggle{
+    display:flex;align-items:center;gap:7px;flex-shrink:0;
+    font-family:inherit;font-size:13px;font-weight:600;
+    background:var(--surface);border:1px solid var(--line);color:var(--text);
+    padding:9px 15px;border-radius:8px;cursor:pointer;white-space:nowrap;
+    transition:all .15s ease;
+  }
+  .page-edit-toggle:hover{border-color:var(--accent);color:var(--accent);}
+  .page-edit-toggle.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .page-edit-toggle svg{width:14px;height:14px;flex-shrink:0;}
+
+  nav{display:flex;flex-direction:column;gap:3px;}
+  .nav-btn{
+    display:flex;align-items:center;gap:10px;
+    text-align:left;background:none;border:none;color:#C4C9E2;
+    font-family:inherit;font-size:14px;font-weight:500;
+    padding:10px 12px;border-radius:8px;cursor:pointer;
+    transition:background .15s ease, color .15s ease;
+  }
+  .nav-btn:hover{background:rgba(255,255,255,.06);color:#fff;}
+  .nav-btn.active{background:var(--accent);color:#fff;}
+  .nav-btn svg{width:16px;height:16px;flex-shrink:0;}
+
+  .sidebar-foot{
+    margin-top:auto;
+    font-size:11.5px;
+    color:#6C7398;
+    line-height:1.5;
+    padding-top:18px;
+    border-top:1px solid rgba(255,255,255,.08);
+    display:flex;flex-direction:column;gap:8px;
+  }
+  .foot-actions{display:flex;gap:6px;flex-wrap:wrap;}
+  .foot-btn{
+    font-family:inherit;font-size:11px;font-weight:600;color:#C4C9E2;
+    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+    padding:5px 9px;border-radius:6px;cursor:pointer;
+  }
+  .foot-btn:hover{background:rgba(255,255,255,.12);color:#fff;}
+  .save-status{font-size:11px;color:#6C7398;min-height:14px;}
+  .save-status.show{color:#7FD6A8;}
+
+  /* ---------- MAIN ---------- */
+  main{flex:1;padding:36px 44px 60px;max-width:1180px;}
+  .page{display:none;}
+  .page.active{display:block;}
+
+  .page-head{margin-bottom:28px;display:flex;justify-content:space-between;align-items:flex-start;gap:20px;}
+  .page-eyebrow{font-size:13px;color:var(--text-faint);font-weight:600;margin-bottom:6px;}
+  .page-title{font-size:26px;font-weight:800;letter-spacing:-.01em;margin:0;}
+  .page-sub{font-size:14.5px;color:var(--text-soft);margin-top:6px;max-width:640px;line-height:1.5;}
+
+  /* KPI row */
+  .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:32px;}
+  .kpi{
+    background:var(--surface);border:1px solid var(--line);border-radius:12px;
+    padding:18px 18px 16px;
+  }
+  .kpi-label{font-size:12.5px;color:var(--text-soft);font-weight:500;margin-bottom:10px;}
+  .kpi-value{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.01em;}
+  .kpi-note{font-size:12px;color:var(--text-faint);margin-top:4px;}
+
+  section.block{margin-bottom:34px;}
+  .block-title{font-size:16px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;}
+  .block-title span.count{font-size:12.5px;font-weight:500;color:var(--text-faint);}
+
+  /* ---------- Editable form controls ---------- */
+  .f-input, .f-textarea, .f-select{
+    font-family:inherit;font-size:13.5px;color:var(--text);
+    background:var(--surface);border:1px solid var(--line);border-radius:7px;
+    padding:8px 10px;width:100%;
+  }
+  .f-input:focus, .f-textarea:focus, .f-select:focus{outline:2px solid var(--accent);outline-offset:0;border-color:var(--accent);}
+  .f-textarea{resize:vertical;min-height:56px;line-height:1.5;font-family:inherit;}
+  .f-num{width:64px;text-align:center;flex-shrink:0;}
+  .f-row{display:flex;gap:8px;align-items:center;}
+  .f-row + .f-row{margin-top:8px;}
+  .f-label{font-size:11px;font-weight:600;color:var(--text-faint);margin-bottom:4px;display:block;}
+  .f-check{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-soft);white-space:nowrap;}
+
+  .edit-card{
+    background:var(--surface);border:1px solid var(--line);border-radius:12px;
+    padding:16px 18px;margin-bottom:12px;position:relative;
+  }
+  .edit-card-grid{display:grid;gap:10px;}
+  .del-btn{
+    font-family:inherit;font-size:12px;font-weight:700;color:var(--danger);
+    background:var(--danger-soft);border:none;border-radius:6px;
+    width:26px;height:26px;flex-shrink:0;cursor:pointer;line-height:1;
+  }
+  .del-btn:hover{background:var(--danger);color:#fff;}
+  .add-btn{
+    font-family:inherit;font-size:13px;font-weight:600;color:var(--accent);
+    background:var(--accent-soft);border:1px dashed var(--accent);border-radius:9px;
+    padding:10px;width:100%;cursor:pointer;
+  }
+  .add-btn:hover{background:var(--accent);color:#fff;border-style:solid;}
+
+  /* Timeline (role history) */
+  .timeline{border-left:2px solid var(--line);margin-left:6px;padding-left:26px;display:flex;flex-direction:column;gap:22px;}
+  .t-item{position:relative;display:flex;align-items:flex-start;justify-content:space-between;gap:24px;}
+  .t-item::before{
+    content:"";position:absolute;left:-32.5px;top:3px;
+    width:10px;height:10px;border-radius:50%;
+    background:var(--accent);border:2px solid var(--paper);
+  }
+  .t-item.current::before{background:var(--gold);width:12px;height:12px;left:-33.5px;top:2px;}
+  .t-item-main{flex:1;min-width:0;}
+  .t-item-side{flex:0 0 260px;max-width:260px;}
+  .t-role{font-size:14.5px;font-weight:700;}
+  .t-meta{font-size:12.5px;color:var(--text-faint);margin-top:2px;}
+  .t-tag{
+    display:inline-block;font-size:11px;font-weight:600;color:var(--gold);
+    background:var(--gold-soft);padding:2px 8px;border-radius:20px;margin-left:8px;
+    vertical-align:middle;
+  }
+  .t-grade{
+    display:inline-block;font-size:11px;font-weight:600;color:var(--accent);
+    background:var(--accent-soft);padding:2px 8px;border-radius:20px;margin-left:8px;
+    vertical-align:middle;
+  }
+  .ach-toggle{
+    display:inline-flex;align-items:center;gap:5px;
+    font-family:inherit;font-size:12.5px;font-weight:600;color:var(--accent);
+    background:none;border:none;padding:0;cursor:pointer;text-align:right;
+  }
+  .ach-toggle:hover{text-decoration:underline;}
+  .ach-caret{display:inline-block;transition:transform .15s ease;font-size:10px;}
+  .ach-caret.open{transform:rotate(90deg);}
+  .ach-list{
+    list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:6px;text-align:left;
+  }
+  .ach-list li{
+    font-size:13px;color:var(--text-soft);line-height:1.5;padding-left:16px;position:relative;
+  }
+  .ach-list li::before{
+    content:"";position:absolute;left:0;top:8px;width:5px;height:5px;border-radius:50%;
+    background:var(--accent);
+  }
+  @media (max-width: 700px){
+    .t-item{flex-direction:column;gap:10px;}
+    .t-item-side{flex:1;max-width:none;}
+    .ach-toggle{text-align:left;}
+  }
+
+  /* Aspiration cards */
+  .positioning-block{
+    background:var(--surface);border:1px solid var(--line);border-radius:12px;
+    padding:16px 18px;margin-bottom:14px;
+  }
+  .positioning-label{
+    font-size:11.5px;font-weight:700;color:var(--accent);text-transform:uppercase;
+    letter-spacing:.04em;margin-bottom:6px;
+  }
+  .positioning-text{font-size:13.5px;color:var(--text);line-height:1.55;}
+  .positioning-empty{font-size:13px;color:var(--text-faint);font-style:italic;}
+
+  .aspire-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;}
+  .aspire-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;}
+  .aspire-when{font-size:11.5px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px;}
+  .aspire-text-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;}
+  .aspire-text-list li{
+    font-size:13.5px;color:var(--text);line-height:1.55;padding-left:14px;position:relative;
+  }
+  .aspire-text-list li::before{
+    content:"";position:absolute;left:0;top:8px;width:5px;height:5px;border-radius:50%;
+    background:var(--accent);
+  }
+  .aspire-text-empty{font-size:13px;color:var(--text-faint);font-style:italic;}
+
+  /* Strengths / dev-areas */
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .tag-list{display:flex;flex-direction:column;gap:8px;}
+  .tag-row{
+    display:flex;align-items:center;gap:10px;
+    background:var(--surface);border:1px solid var(--line);
+    border-radius:9px;padding:10px 14px;font-size:13.5px;
+  }
+  .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+  .dot.good{background:var(--good);}
+  .dot.gold{background:var(--gold);}
+
+  /* Chart card */
+  .chart-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:22px 22px 8px;}
+  .legend-row{display:flex;gap:18px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line);font-size:12.5px;color:var(--text-soft);}
+  .legend-item{display:flex;align-items:center;gap:6px;}
+  .legend-swatch{width:10px;height:10px;border-radius:3px;}
+
+  /* Priority cards */
+  .priority-card{
+    background:var(--surface);border:1px solid var(--line);border-radius:12px;
+    padding:18px 20px;margin-bottom:12px;
+  }
+  .priority-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px;}
+  .priority-title{font-size:14.5px;font-weight:700;}
+  .priority-owner{font-size:11.5px;color:var(--text-faint);background:var(--paper);padding:3px 9px;border-radius:20px;white-space:nowrap;}
+  .priority-row{font-size:13px;color:var(--text-soft);margin-top:6px;line-height:1.5;}
+  .priority-row b{color:var(--text);font-weight:600;}
+
+  /* Table */
+  .table-wrap{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden;overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  thead th{
+    text-align:left;font-size:11.5px;font-weight:700;color:var(--text-faint);
+    text-transform:uppercase;letter-spacing:.03em;
+    padding:12px 16px;border-bottom:1px solid var(--line);background:var(--paper);white-space:nowrap;
+  }
+  tbody td{padding:12px 16px;border-bottom:1px solid var(--line);vertical-align:top;}
+  tbody tr:last-child td{border-bottom:none;}
+  .cat-pill{
+    display:inline-block;font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;
+  }
+  .cat-Training{background:var(--accent-soft);color:var(--accent);}
+  .cat-Course{background:#E6F3FB;color:#2A8FC7;}
+  .cat-Book{background:#F1EAFB;color:#7C4FCB;}
+  .cat-Seminar{background:var(--gold-soft);color:var(--gold);}
+  .cat-Mentoring{background:var(--good-soft);color:var(--good);}
+  .cat-Coaching{background:var(--danger-soft);color:var(--danger);}
+  .status-Done{color:var(--good);font-weight:600;}
+  .status-Ongoing{color:var(--gold);font-weight:600;}
+  .cell-sub{font-size:11.5px;color:var(--text-faint);margin-top:2px;}
+
+  .filters{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+  .filter-btn{
+    font-family:inherit;font-size:12.5px;font-weight:600;
+    background:var(--surface);border:1px solid var(--line);color:var(--text-soft);
+    padding:7px 13px;border-radius:20px;cursor:pointer;transition:all .15s ease;
+  }
+  .filter-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .filter-btn.active{background:var(--ink);border-color:var(--ink);color:#fff;}
+
+  /* Behaviour accordion */
+  .bhv-group{background:var(--surface);border:1px solid var(--line);border-radius:12px;margin-bottom:10px;overflow:hidden;}
+  .bhv-header{
+    display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+    background:none;border:none;font-family:inherit;cursor:pointer;
+    padding:16px 18px;
+  }
+  .bhv-caret{flex-shrink:0;font-size:11px;color:var(--text-faint);transition:transform .15s ease;}
+  .bhv-caret.open{transform:rotate(90deg);}
+  .bhv-header-text{flex:1;min-width:0;}
+  .bhv-name{font-size:14.5px;font-weight:700;}
+  .bhv-desc{font-size:12.5px;color:var(--text-soft);margin-top:2px;line-height:1.5;}
+  .bhv-count{font-size:11.5px;color:var(--text-faint);background:var(--paper);padding:3px 9px;border-radius:20px;white-space:nowrap;flex-shrink:0;}
+  .bhv-body{padding:0 18px 18px;display:none;}
+  .bhv-body.open{display:block;}
+  .bhv-element{border-top:1px solid var(--line);padding:14px 0;}
+  .bhv-element:first-child{border-top:none;padding-top:4px;}
+  .bhv-element-name{font-size:13.5px;font-weight:600;margin-bottom:10px;white-space:pre-line;}
+  .bhv-levels{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+  .bhv-level-label{font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;}
+  .bhv-level-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px;}
+  .bhv-level-list li{font-size:12.5px;color:var(--text-soft);line-height:1.5;padding-left:13px;position:relative;}
+  .bhv-level-list li::before{content:"";position:absolute;left:0;top:7px;width:4px;height:4px;border-radius:50%;background:var(--text-faint);}
+  .bhv-level-empty{font-size:12.5px;color:var(--text-faint);font-style:italic;}
+  @media (max-width: 700px){
+    .bhv-levels{grid-template-columns:1fr;}
+  }
+
+  @media (max-width: 880px){
+    .app{flex-direction:column;}
+    .sidebar{width:100%;height:auto;position:relative;flex-direction:column;padding:16px 20px;}
+    .brand{margin-bottom:14px;}
+    .profile-card{margin-bottom:14px;}
+    .sidebar-foot{display:flex;}
+    main{padding:24px 20px 40px;}
+    .kpi-row,.aspire-row,.two-col{grid-template-columns:1fr;}
+    .page-head{flex-direction:column;}
+  }
+  .auth-overlay{position:fixed;inset:0;background:#0F1330;display:none;align-items:center;justify-content:center;z-index:9999;padding:16px;}
+  .auth-overlay.show{display:flex;}
+  .auth-card{background:#fff;border-radius:12px;padding:28px;width:100%;max-width:360px;box-shadow:0 10px 40px rgba(0,0,0,.35);}
+  .auth-card h2{margin:0 0 4px;font-size:20px;color:#1B2150;}
+  .auth-card p{margin:0 0 18px;font-size:13px;color:#6C7398;}
+  .auth-card label{display:block;font-size:12px;font-weight:600;color:#1B2150;margin:12px 0 4px;}
+  .auth-card input{width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid #CBD0E6;border-radius:8px;font:inherit;font-size:14px;}
+  .auth-card button{width:100%;margin-top:18px;padding:11px;border:0;border-radius:8px;background:#2F3BA8;color:#fff;font:inherit;font-weight:600;cursor:pointer;}
+  .auth-card button:disabled{opacity:.6;cursor:default;}
+  .auth-error{color:#C0392B;font-size:12.5px;min-height:16px;margin-top:10px;}
+  .save-status.err{color:#FF9B9B;}
+  .sync-user{font-size:11px;color:#9AA1C7;margin:8px 0 4px;word-break:break-all;}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="auth-overlay" id="authOverlay">
+  <form class="auth-card" id="authForm">
+    <h2>Sign in</h2>
+    <p>Sign in to load and save your portfolio from the database.</p>
+    <label for="authEmail">Email</label>
+    <input type="email" id="authEmail" autocomplete="username" required>
+    <label for="authPass">Password</label>
+    <input type="password" id="authPass" autocomplete="current-password" required>
+    <button type="submit" id="authSubmit">Sign in</button>
+    <div class="auth-error" id="authError"></div>
+  </form>
+</div>
+<aside class="sidebar">
+    <div class="brand">INDIVIDUAL DEVELOPMENT PLAN</div>
+    <div class="profile-card">
+      <div class="avatar" id="avatarInitials">–</div>
+      <div>
+        <div class="profile-name" id="sidebarName">Your Name</div>
+        <div class="profile-role" id="sidebarRole">Your Role</div>
+      </div>
+    </div>
+
+    <nav>
+      <button class="nav-btn active" data-page="overview">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        Overview
+      </button>
+      <button class="nav-btn" data-page="career">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg>
+        Career &amp; Role
+      </button>
+      <button class="nav-btn" data-page="competency">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+        Competency
+      </button>
+      <button class="nav-btn" data-page="learning">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+        Learning
+      </button>
+      <button class="nav-btn" data-page="behaviour">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0116 0v1"/></svg>
+        Behaviour
+      </button>
+    </nav>
+
+    <div class="sidebar-foot">
+      <div class="foot-actions">
+        <button class="foot-btn" id="exportBtn">Export JSON</button>
+        <button class="foot-btn" id="importBtn">Import JSON</button>
+        <button class="foot-btn" id="resetBtn">Reset</button>
+      </div>
+      <input type="file" id="importFile" accept="application/json" style="display:none;">
+      <div class="save-status" id="saveStatus"></div>
+      <div class="sync-user" id="syncUser"></div>
+      <button class="foot-btn" id="signOutBtn" style="display:none;">Sign out</button>
+    </div>
+  </aside>
+
+  <main>
+
+    <!-- ============ OVERVIEW ============ -->
+    <div class="page active" id="page-overview">
+      <div class="page-head">
+        <div>
+          <div class="page-eyebrow">Overview</div>
+          <h1 class="page-title">Hello, <span id="ovName">Your Name</span> 👋</h1>
+          <p class="page-sub" id="ovSub">This is a quick overview of your career journey, competency assessment, and learning activities.</p>
+        </div>
+      </div>
+
+      <div class="kpi-row" id="kpiRow"></div>
+
+      <section class="block">
+        <div class="block-title">Development Priorities <span class="count" id="priCount"></span></div>
+        <div id="priorityList"></div>
+      </section>
+
+      <section class="block">
+        <div class="block-title">Recent Learning Activities</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Activity</th><th>Category</th><th>Date</th><th>Status</th></tr></thead>
+            <tbody id="recentLearningBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============ CAREER ============ -->
+    <div class="page" id="page-career">
+      <div class="page-head">
+        <div>
+          <div class="page-eyebrow">Profile &amp; Role History</div>
+          <h1 class="page-title">Career &amp; Aspirations</h1>
+          <p class="page-sub">Your role journey so far, and the career direction you're aiming for.</p>
+        </div>
+        <button class="page-edit-toggle" data-edit-page="career">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          <span class="page-edit-label">Edit</span>
+        </button>
+      </div>
+
+      <section class="block" id="profileEditBlock" style="display:none;">
+        <div class="block-title">Profile</div>
+        <div class="edit-card">
+          <div class="edit-card-grid" style="grid-template-columns:1fr 1fr 1fr;">
+            <div><span class="f-label">Name</span><input class="f-input" id="inProfileName" type="text"></div>
+            <div><span class="f-label">Role</span><input class="f-input" id="inProfileRole" type="text"></div>
+            <div><span class="f-label">Department</span><input class="f-input" id="inProfileDept" type="text"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="block">
+        <div class="block-title">Role History &amp; Assignments</div>
+        <div class="timeline" id="roleTimeline"></div>
+        <div id="roleEditList" style="display:none;margin-top:14px;"></div>
+        <button class="add-btn" id="addRoleBtn" style="display:none;margin-top:10px;">+ Add Role</button>
+      </section>
+
+      <section class="block">
+        <div class="block-title">Career Aspirations — Next 5 Years</div>
+
+        <div class="positioning-block" id="positioningView">
+          <div class="positioning-label">Positioning</div>
+          <div class="positioning-text" id="positioningText"></div>
+        </div>
+        <div class="positioning-block" id="positioningEdit" style="display:none;">
+          <span class="f-label">Positioning</span>
+          <textarea class="f-textarea" id="inPositioning" placeholder="Describe your positioning — how you want to be perceived, your unique value, etc."></textarea>
+        </div>
+
+        <div class="aspire-row" id="aspireRow"></div>
+        <div class="aspire-row" id="aspireEditRow" style="display:none;"></div>
+        <button class="add-btn" id="addAspirationBtn" style="display:none;margin-top:10px;">+ Add Aspiration</button>
+      </section>
+    </div>
+
+    <!-- ============ COMPETENCY ============ -->
+    <div class="page" id="page-competency">
+      <div class="page-head">
+        <div>
+          <div class="page-eyebrow">Capability Assessment</div>
+          <h1 class="page-title">Competency &amp; Development Priorities</h1>
+          <p class="page-sub">Key strengths, development areas, and current vs. target competency gaps.</p>
+        </div>
+        <button class="page-edit-toggle" data-edit-page="competency">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          <span class="page-edit-label">Edit</span>
+        </button>
+      </div>
+
+      <div class="two-col" style="margin-bottom:30px;">
+        <section class="block" style="margin-bottom:0;">
+          <div class="block-title">Key Strengths</div>
+          <div class="tag-list" id="strengthList"></div>
+          <div id="strengthEditList" style="display:none;"></div>
+          <button class="add-btn" id="addStrengthBtn" style="display:none;margin-top:8px;">+ Add Strength</button>
+        </section>
+        <section class="block" style="margin-bottom:0;">
+          <div class="block-title">Development Areas</div>
+          <div class="tag-list" id="devAreaList"></div>
+          <div id="devAreaEditList" style="display:none;"></div>
+          <button class="add-btn" id="addDevAreaBtn" style="display:none;margin-top:8px;">+ Add Area</button>
+        </section>
+      </div>
+
+      <section class="block">
+        <div class="block-title">Skills Gap Assessment</div>
+        <div class="chart-card">
+          <canvas id="competencyChart" height="110"></canvas>
+          <div class="legend-row">
+            <div class="legend-item"><span class="legend-swatch" style="background:var(--accent)"></span>Current Level</div>
+            <div class="legend-item"><span class="legend-swatch" style="background:var(--gold)"></span>Target</div>
+          </div>
+        </div>
+        <div id="competencyEditList" style="display:none;margin-top:14px;"></div>
+        <button class="add-btn" id="addCompetencyBtn" style="display:none;margin-top:10px;">+ Add Competency</button>
+      </section>
+
+      <section class="block">
+        <div class="block-title">Development Priorities</div>
+        <div id="priorityListFull"></div>
+        <div id="priorityEditList" style="display:none;"></div>
+        <button class="add-btn" id="addPriorityBtn" style="display:none;">+ Add Priority</button>
+      </section>
+    </div>
+
+    <!-- ============ LEARNING ============ -->
+    <div class="page" id="page-learning">
+      <div class="page-head">
+        <div>
+          <div class="page-eyebrow">Learning &amp; Development Log</div>
+          <h1 class="page-title">Training, Reading, Seminars &amp; Coaching</h1>
+          <p class="page-sub">All learning activities completed or currently in progress.</p>
+        </div>
+        <button class="page-edit-toggle" data-edit-page="learning">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          <span class="page-edit-label">Edit</span>
+        </button>
+      </div>
+
+      <div class="filters" id="learningFilters"></div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Category</th><th>Activity / Title</th><th>Date</th><th>Key Takeaway</th><th>Status</th></tr>
+          </thead>
+          <tbody id="learningBody"></tbody>
+        </table>
+      </div>
+      <div id="learningEditList" style="display:none;margin-top:14px;"></div>
+      <button class="add-btn" id="addLearningBtn" style="display:none;margin-top:10px;">+ Add Learning Record</button>
+    </div>
+
+    <!-- ============ BEHAVIOUR ============ -->
+    <div class="page" id="page-behaviour">
+      <div class="page-head">
+        <div>
+          <div class="page-eyebrow">Competency Framework</div>
+          <h1 class="page-title">Behaviour Reference</h1>
+          <p class="page-sub">Company-wide behavioural indicators by competency and job level. Click a competency to expand it.</p>
+        </div>
+        <button class="page-edit-toggle" data-edit-page="behaviour">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          <span class="page-edit-label">Edit</span>
+        </button>
+      </div>
+      <div id="behaviourList"></div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+/* =====================================================================
+   DEFAULT DATA — used when there's no saved data in this browser yet.
+   After you edit via the "Edit Dashboard" button, changes are
+   automatically saved to the browser's localStorage and override these defaults.
+   ===================================================================== */
+const DEFAULT_DATA = {
+  profile: {
+    name: "Your Name",
+    role: "Your Role",
+    department: "Your Department",
+  },
+
+  roleHistory: [
+    { role: "Current Role", grade: "", assignment: "Department / Team", periodStart: "", periodEnd: "", current: true, achievements: ["Describe a key achievement or impact in this role"] },
+    { role: "Previous Role", grade: "", assignment: "Department / Team", periodStart: "", periodEnd: "", current: false, achievements: ["Describe a key achievement or impact in this role"] },
+    { role: "Previous Role", grade: "", assignment: "Department / Team", periodStart: "", periodEnd: "", current: false, achievements: ["Describe a key achievement or impact in this role"] },
+  ],
+
+  // Single free-text field shown above the aspirations list.
+  positioning: "",
+
+  // Open-ended list — add as many aspirations as needed via Edit mode.
+  // Each aspiration's "text" is itself an array so you can add multiple
+  // descriptions under the same time horizon.
+  aspirations: [
+    { when: "1–2 Years", text: ["Describe your career aspiration for this short-term horizon — target role, scope, or capability."] },
+    { when: "2–3 Years", text: ["Describe your career aspiration for this mid-term horizon — target role, scope, or capability."] },
+    { when: "3–5 Years", text: ["Describe your career aspiration for this long-term horizon — target role, scope, or capability."] },
+  ],
+
+  strengths: [
+    "Strength one",
+    "Strength two",
+    "Strength three",
+  ],
+
+  developmentAreas: [
+    "Development area one",
+    "Development area two",
+    "Development area three",
+  ],
+
+  // current & target on a 1–5 scale
+  competencies: [
+    { name: "Competency name 1", current: 3, target: 4 },
+    { name: "Competency name 2", current: 2, target: 4 },
+    { name: "Competency name 3", current: 3, target: 5 },
+    { name: "Competency name 4", current: 4, target: 4 },
+    { name: "Competency name 5", current: 2, target: 3 },
+  ],
+
+  priorities: [
+    {
+      title: "Development priority 1",
+      what: "What will be developed and why",
+      steps: "Steps with target dates",
+      metric: "Success measure & who's responsible",
+      owner: "Owner name",
+    },
+    {
+      title: "Development priority 2",
+      what: "What will be developed and why",
+      steps: "Steps with target dates",
+      metric: "Success measure & who's responsible",
+      owner: "Owner name",
+    },
+  ],
+
+  // category: Training | Course | Book | Seminar | Mentoring | Coaching
+  // status: Done | Ongoing
+  learningRecords: [
+    { category: "Training", title: "Training program name", date: "", takeaway: "Key skill gained", status: "Done" },
+    { category: "Book",     title: "Book title — Author",    date: "", takeaway: "Key idea applied", status: "Done" },
+    { category: "Seminar",  title: "Conference / seminar name", date: "", takeaway: "Key takeaway", status: "Done" },
+    { category: "Mentoring",title: "Mentor name — focus area", date: "", takeaway: "Progress or insight", status: "Ongoing", person: "" },
+    { category: "Coaching", title: "Coach name — focus area",  date: "", takeaway: "Progress or insight", status: "Ongoing", person: "" },
+  ],
+
+  // Static company competency framework, sourced from the uploaded IDP
+  // template's "Behaviour" sheet. Editable like the rest of the dashboard.
+  behaviours: [{"behaviour": "Drive & Courage", "description": "Memiliki keberanian dalam mengambil tindakan serta  memiliki standard kerja yang tinggi  dan  memiliki daya juang dan ketangguhan dalam menghadapi tantangan dan rintangan dalam menuntaskan pekerjaan.", "elements": [{"element": "Strive for excellence", "officer": ["Menetapkan target yang lebih tinggi (stretched target) dari sebelumnya"], "executive": ["Menetapkan target yang lebih tinggi (stretched target) dari sebelumnya"], "deptHead": ["Menetapkan target yang lebih tinggi (stretched target) dari sebelumnya"]}, {"element": "Grit", "officer": ["Menuntaskan tugas meskipun ada hambatan dan atau tantangan"], "executive": ["Menuntaskan tugas meskipun ada hambatan dan atau tantangan"], "deptHead": ["Mengajak timnya untuk terus meningkatkan target dari pencapaian sebelumnya."]}, {"element": "Risk Management", "officer": ["Memitigasi risiko dalam mengambil tindakan"], "executive": ["Memitigasi risiko dalam mengambil tindakan"], "deptHead": ["Membangun budaya sikap antusias, optimis dalam menyelesaikan tugas walau menghadapi hambatan dan tantangan dengan standar kinerja yang tinggi."]}, {"element": "Action Oriented", "officer": ["Berinisiatif mengambil tindakan yang tepat sesuai dengan framework pekerjaannya"], "executive": ["Berinisiatif mengambil tindakan yang tepat sesuai dengan framework pekerjaannya"], "deptHead": ["Memitigasi risiko dalam pengambilan keputusan operasional", "Berinisiatif membuat keputusan pada waktu yang tepat; dalam rangka mengejar suatu  peluang atau, mengatasi sebuah isu, atau mencegah sebuah masalah."]}]}, {"behaviour": "Learning & Innovation", "description": "Kemampuan untuk berinovasi dengan terus belajar dan melakukan terobosan/improvement", "elements": [{"element": "Learning", "officer": ["Mempelajari ilmu, teknologi, keterampilan atau trend baru dari siapapun untuk mengantisipasi peluang dan risiko organisasi sebagai basis untuk berinovasi"], "executive": ["Mempelajari ilmu, teknologi, keterampilan atau trend baru dari siapapun untuk mengantisipasi peluang dan risiko organisasi sebagai basis untuk berinovasi"], "deptHead": ["Mempelajari ilmu, teknologi, keterampilan atau trend baru dari siapapun untuk mengantisipasi peluang dan risiko organisasi sebagai basis untuk berinovasi"]}, {"element": "Innovation: process/product/business model", "officer": ["Menghasilkan process/product improvement yang unik/baru di pekerjaannya untuk meningkatkan efisiensi atau kepuasan pelanggan/next process."], "executive": ["Menghasilkan process/product improvement yang unik/baru di pekerjaannya yang berdampak pada finansial atau kepuasan pelanggan/next process"], "deptHead": ["Menghasilkan process/product improvement yang unik/baru di pekerjaannya yang berdampak pada finansial atau kepuasan pelanggan / next process"]}, {"element": "Budaya Inovasi", "officer": ["menelusuri cara-cara alternatif untuk memanfaatkan peluang bagi dirinya", "mengimplementasikan solusi baru untuk pribadi dan masih dalam kewenangan tugasnya"], "executive": ["Mengajak rekan kerja untuk meneusuri cara-cara alternatif untuk memanfaatkan peluang bagi dirinya", "mengimplementasikan solusi baru untuk pribadi dan masih dalam kewenangan tugasnya"], "deptHead": ["Mengajak timnya untuk menelusuri cara-cara alternatif untuk memanfaatkan peluang", "Memberdayakan timnya yang ingin mengimplementasi solusi baru dengan memberikan kesempatan timnya tersebut memimpin implementasinya"]}]}, {"behaviour": "Analysis & Judgement:", "description": "Menemukenali masalah yang signifikan mempengaruhi bisnis, menentukan akar masalah (diagnostic), memperkirakan impact masalah (predictive), dan menentukan solusinya (prescriptive)", "elements": [{"element": "Desciptive Analysis: Menemukenali Masalah", "officer": ["Menemukenali masalah dipekerjaannya yang berpengaruh secara signifikan bagi bisnis perusahaan"], "executive": ["Menemukenali masalah dipekerjaannya yang berpengaruh secara signifikan bagi bisnis perusahaan"], "deptHead": ["Menemukenali masalah dipekerjaannya yang berpengaruh secara signifikan bagi bisnis perusahaan"]}, {"element": "Diagnostic Analysis: Mencari akar masalah atau penentu keberhasilan peluang", "officer": ["Menemukan akar masalah yang mempengaruhi masalah dengan metode sederhana, sebab akibat yang jelas"], "executive": ["Menemukan akar masalah yang mempengaruhi masalah dengan menggunakan root cause analysis tools"], "deptHead": ["Menemukan akar masalah yang mempengaruhi masalah dengan menggunakan problem solving analysis tools"]}, {"element": "Predictive Analysis: Memprediksi berdasarkan pola data dan akar masalah", "officer": ["memprediksi impact masalah berdasarkan gejala eksplisit, sudah jelas sebab akbatnya"], "executive": ["Memprediksi impact masalah berdasarkan pola data dan akar masalah"], "deptHead": ["Memprediksi impact masalah operasional di timnya berdasarkan pola data dan akar masalah"]}, {"element": "Prescriptive: Memberikan rekomendasi berdsarkan pro dan cons-nya", "officer": ["Memberikan rekomendasi pemecahan masalah secara sederhana, sesuai dengan prosedur yang ada"], "executive": ["Menentukan pemecahan masalah pekerjaannya dengan mempertimbangkan pro dan cons-nya"], "deptHead": ["Menentukan pemecahan masalah di  timnya dengan mempertimbangkan pro dan cons-nya"]}]}, {"behaviour": "Excellent Execution", "description": "Kemampuan untuk mengeksekusi dan menghasilkan karya melalui perencanaan yang matang dan disiplin untuk memastikan rencana tersebut dapat tereksekusi melebihi target yang ditetapkan", "elements": [{"element": "Perencanaan (Planning)", "officer": ["Menyusun rencana aktivitas untuk pekerjaan dengan mempertimbangkan waktu yang dibutuhkan untuk menyelesaikan tugas tersebut."], "executive": ["Menyusun rencana aktivitas berdasarkan inisiatif pribadi dan strategi departemen dengan mempertimbangkan waktu, sumber daya, serta pihak yang terlibat"], "deptHead": ["Menyusun rencana aktivitas (activity plan) kuartalan yang memuat aktivitas rinci, jadwal, PIC, kebutuhan / keterkaitan dengan fungsi lain, kriteria sukses, serta sumber daya yang dibutuhkan dalam rangka mengimplementasikan inisiatif departemen"]}, {"element": "Driving Action", "officer": ["Melakukan kontrol dan corrective action atas implementasi dari perencanaan kerja dirinya", "Memiliki mekanisme agar rencana kerjanya tercapai atau bahkan melebihi target"], "executive": ["Melakukan kontrol dan corrective action atas implementasi dari perencanaan kerja dirinya", "Memiliki mekanisme agar rencana kerjanya tercapai atau bahkan melebihi target"], "deptHead": ["Melakukan kontrol dan corrective action secara sistematis atas implementasi dari perencanaan kerja organisasinya", "Memastikan timnya untuk mencapai atau melebihi rencana kerjanya"]}, {"element": "Penyesuaian rencana", "officer": ["Menyesuaikan rencana aktivitas ketika menghadapi tantangan agar pencapaian target tercapai"], "executive": ["Menyesuaikan rencana aktivitas ketika menghadapi tantangan agar pencapaian target tercapai"], "deptHead": ["Menyesuaikan rencana aktivitas ketika menghadapi tantangan agar target tercapai atau melampaui"]}, {"element": "Rencana kontingensi", "officer": ["Menyiapkan rencana kontingensi untuk mengantisipasi hambatan di sebagian proses dalam mencapai target pekerjaannya"], "executive": ["Menyiapkan rencana kontingensi untuk mengantisipasi hambatan di sebagian proses dalam mencapai target pekerjaannya"], "deptHead": ["Menyiapkan rencana kontingensi secara end to end untuk mengantisipasi hambatan dalam pencapaian target"]}]}, {"behaviour": "Collaboration", "description": "Menjadi individu yang autentik, berkontribusi serta menciptakan suasana kerja sama yang positif dan sinergis demi mencapai tujuan organisasi serta memberikan kebermanfaatan bagi tim/orang lain", "elements": [{"element": "1.  Kontribusi di dalam tim", "officer": ["Cooperative team member, memberikan dukungan terhadap keputusan kelompok, kontribusi sebatas peran."], "executive": ["Kontributor aktif (tanpa harus diminta) dalam bentuk pekerjaan dan atau memberikan ide/pendapat untuk kepentingan tim."], "deptHead": ["Melakukan inisiasi dalam membangun kerjasama lintas departemen demi tujuan yang lebih besar dari unit kerjanya."]}, {"element": "2. Mengelola keragaman individu/organisasi di dalam kelompok", "officer": ["Menunjukkan sikap kerja yang positif dengan menghargai perbedaan pendapat dan cara pandang."], "executive": ["Menunjukkan sikap kerja yang positif dengan menghargai perbedaan pendapat dan cara pandang."], "deptHead": ["Menciptakan suasana kerjasama yang positif dalam kelompok yang heterogen (banyak kepentingan, perbedaan pemikiran, dan perbedaan kemampuan) untuk menciptakan winning team di dalam organisasi."]}, {"element": "3. Authenticity", "officer": ["Menerima kekuatan dan kelemahan dalam diri sehingga menampilkan diri apa adanya untuk mendapatkan trust dari rekan satu tim"], "executive": ["Menerima kekuatan dan kelemahan dalam diri sehingga menampilkan diri apa adanya untuk mendapatkan trust dari rekan satu tim"], "deptHead": ["Menyampaikan informasi tentang diri sendiri pada orang lain, baik seputar kekuatan  maupun keterbatasan; menyatakan dengan terbuka prinsip yang teguh, nilai-nilai, motif, dan tujuan"]}, {"element": "Inisiatif menawarkan bantuan", "officer": ["Berinisiatif menawarkan bantuan rekan kerja/fungsi lain/ masyarakat sekitar untuk memberikan nilai tambah bagi tim/fungsi lain/masyarakat sekitar"], "executive": ["Berinisiatif menawarkan bantuan rekan kerja/fungsi lain/ masyarakat sekitar untuk memberikan nilai tambah bagi tim/fungsi lain/masyarakat sekitar"], "deptHead": ["Berinisiatif menawarkan bantuan rekan kerja/fungsi lain/ masyarakat sekitar untuk memberikan nilai tambah bagi tim/fungsi lain/masyarakat sekitar"]}]}, {"behaviour": "Interpersonal Skill", "description": "Kemampuan untuk mengelola emosi diri secara proaktif, mendengarkan secara aktif, berkomunikasi secara asertif, dan mempengaruhi pihak lain yang dilandasi oleh mutual benefits", "elements": [{"element": "Proactiveness", "officer": ["Meresponse masalah relasional secara tenang dan terkontrol saat dilanda tekanan yang berhubungan dengan\npekerjaan atau oposisi dari pihak lain; tidak bereaksi berlebihan atau defensif."], "executive": ["Meresponse masalah relasional secara tenang dan terkontrol saat dilanda tekanan yang berhubungan dengan\npekerjaan atau oposisi dari pihak lain; tidak bereaksi berlebihan atau defensif."], "deptHead": ["Meresponse masalah relasional secara proaktif dan produktif saat dilanda tekanan yang berhubungan dengan\npekerjaan atau oposisi dari pihak lain"]}, {"element": "Assertive", "officer": ["Berkomunikasi secara asertif kepada rekan kerja atau lingkup yang terbatas atau karekateristik yang homogen"], "executive": ["Berkomunikasi secara asertif kepada beragam karakteristik stake holder dilingkup yang terbatas"], "deptHead": ["Berkomunikasi secara asertif kepada beragam karakteristik baik sifat maupun level jabatan"]}, {"element": "Influencing skill", "officer": ["Dapat memengaruhi orang-orang dalam lingkungan terbatas."], "executive": ["Dapat mempengaruhi orang lain dengan ditunjang oleh data dan fakta"], "deptHead": ["Dapat mempengaruhi orang lain dengan ditunjang oleh data dan fakta"]}, {"element": "Active Listening to get Mutual Understanding", "officer": ["Peduli, active listening,menunjukkan minat untuk memahami perasaan dan pikiran orang lain."], "executive": ["Peduli, active listening,menunjukkan minat untuk memahami perasaan dan pikiran orang lain."], "deptHead": ["Menggunakan pertanyaan bersifat terbuka untuk menelusuri isu dan mengklarifikasi sudut pandang dan  tujuan orang lain;"]}]}, {"behaviour": "Customer Focus", "description": "Memahami pelanggan/next process serta dengan terus mendapatkan feedback yang dibutuhkan, kemudian meresponse dan meningkatkan standard kualitas layanan kepada pelanggan.", "elements": [{"element": "Mengenali Kebutuhan dan kepuasan pelanggan", "officer": ["Mengidentifikasi kebutuhan pelanggan/next process dari gejala eskplisit (dinyatakan secara langsung)."], "executive": ["Mengidentifikasi pain, gain, dan kebutuhan pelanggan/next process melalui gejala eskplisit dan implisit"], "deptHead": ["Mengidentifikasi pain, gain, dan kebutuhan pelanggan/next process melalui gejala eskplisit dan implisit"]}, {"element": "Response terhadap perubahan kebutuhan customer", "officer": ["Merespon dengan segera perubahan kebutuhan para stakeholder"], "executive": ["Merespon dengan segera perubahan kebutuhan para stakeholder"], "deptHead": ["Merespon dengan segera perubahan kebutuhan para stakeholder"]}, {"element": "Feedback", "officer": ["menerima feedback dengan terbuka, tidak defensif"], "executive": ["menerima feedback dengan terbuka, tidak defensif"], "deptHead": ["Mengupayakan feedback untuk mengidentifikasi tingkat kepuasan pelanggan/next process"]}, {"element": "Meningkatkan standar kualitas layanan", "officer": ["Memberikan kualitas layanan sesuai standar dengan paramater-parameter telah ditetapkan"], "executive": ["Memberikan kualitas layanan melebihi standar yang ditetapkan namun tetap dalam  paramater-parameter telah ditetapkan"], "deptHead": ["Membuat parameter baru yang berdampak pada peningkatan kepuasan pelanggan"]}, {"element": "Obsessed with front liner", "officer": ["Mengupayakan frontliner yang bersentuhan langsung dengan pelanggan di areanya memiliki kemampuan/fasilitas untuk melayani pelanggan dengan baik"], "executive": ["Mengupayakan frontliner yang bersentuhan langsung dengan pelanggan di areanya memiliki kemampuan/fasilitas/system untuk melayani pelanggan dengan baik"], "deptHead": ["Mengupayakan frontliner yang bersentuhan langsung dengan pelanggan di areanya memiliki kemampuan/fasilitas/system untuk melayani pelanggan dengan baik"]}]}, {"behaviour": "Leading and Inspiring", "description": "Mengarahkan tim dengan memberikan kebermaknaan dalam pekerjaan serta mengembangkan anggota tim untuk menjadi insan yang lebih baik serta menyiapkan diri sendiri/tim untuk menghadapi perubahan yang terjadi.", "elements": [{"element": "Presence as Leader", "officer": ["Senantiasa selalu hadir untuk tim ketika dibutuhkan"], "executive": ["Senantiasa selalu hadir untuk tim ketika dibutuhkan"], "deptHead": ["Bertanggung jawab pada keputusan yang diambil oleh tim"]}, {"element": "Coaching & Mentoring", "officer": ["Memberikan bimbingan kepada anggota tim untuk kelancaran pekerjaannya"], "executive": ["Melakukan coaching atau mentoring yang tersturktur untuk kelancaran pekerjaan timnya"], "deptHead": ["Melakukan coaching dan mentoring yang terstruktur untuk kelancaran pekerjaantimnya"]}, {"element": "Mengembangkan\nsubordinat", "officer": ["Mengenali karekteristik tim untuk menyesuaikan pola pengembangan yang akan diberikan"], "executive": ["Mengidentifikasi kekuatan dan area pengembangan timnya untuk pemenuhan kompetensi posisi saat ini"], "deptHead": ["Menentukan pengembangan subordinat nya berdasarkan area of developmentnya untuk memenuhi kebutuhan kompetensi di posisi saat ini."]}, {"element": "Change Management", "officer": ["Merespon perubahan dengan sigap"], "executive": ["Membuat perencanaan pengelolaan perubahan (change management) dalam inisiatif yang dijalankannya"], "deptHead": ["Mengambil tanggung  jawab untuk mengimplementasi insiatif perubahan dengan mengidentifikasi hal-hal yang dibutuhkan para stakeholder agar dapat menjalankan inisiatif perubahan (misal: pengetahuan atau skill baru)"]}, {"element": "Mengarahkan/mendelegasikan pekerjaan dengan kebermaknaan", "officer": [], "executive": [], "deptHead": ["Memberikan kesempatan kepada tim untuk mengambil keputusan/tindakan dalam lingkup pekerjaannya", "Mendelegasikan tugas kepada tim disesuaikan dengan kemampuan dan kepribadian setiap individu timnya."]}]}, {"behaviour": "Establishing Strategic Direction", "description": "Menentukan inisiatif strategi untuk pencapaian objective organisasi", "elements": [{"element": "Initiative Strategy", "officer": ["Membuat inisiatif improvement yang mendukung pencapaian objective departemen"], "executive": ["Membuat inisiatif improvement yang mendukung pencapaian objective departemen"], "deptHead": ["Menyusun strategic initiative dalam rangka mendukung pencapaian company aspiration."]}, {"element": "Menentukan Visi, Misi, Objective", "officer": ["Menentukan target kerja pribadi yang align dengan objective departemen"], "executive": ["Menentukan target kerja pribadi yang align dengan objective departemen"], "deptHead": ["Menentukan objective dan visi fungsinya yang align dengan visi, objective divisi"]}, {"element": "Strategic Agility", "officer": [], "executive": ["Membuat inisiatif improvement dengan memanfaatkan data dan sumber daya yang ada."], "deptHead": ["Menyusun strategic initiative dengan memanfaatkan data dan sumber daya yang ada."]}]}, {"behaviour": "Meaningful Business Accumen", "description": "Mengambil tindakan berdasarkan pemahamannya akan bisnis perusahaan untuk memaksimalkan kontribusi areanya terhadap kebermaknaan dan kebermanfaatan bisnis perusahaan.", "elements": [{"element": "Business Knowledge:\n1. Revenue/ Cost Drivers\n2. Business Model\n3. Market Trends\n4. Industry Trends\n5. Macro Situations", "officer": ["Memahami revenue atau cost driver di pekerjaannya sebagai dasar pengambilan tindakan/inisiatif"], "executive": ["memahami revenue dan atau cost driver di tempatnya dan impactnya terhadap perusahaan sebagai dasar pengambilan tindakan/inisiatif/keputusan"], "deptHead": ["memahami business model perusahaan, revenue dan cost driver di tempatnya dan impactnya terhadap perusahaan sebagai dasar pengambilan keputusan"]}, {"element": "Identify Improvement opportunity:\n1. Value Added to customer\n2. Efficiency\n3. Market Development\n4. Product Development", "officer": ["Mengidentifikasi peluang untuk meningkatkan  value added terhadap customer/next proses (dengan cost yang tetap) atau meningkatkan efisiensi di tempat kerjanya berdasarkan pemahamannya terhadap bisnis"], "executive": ["Mengidentifikasi peluang untuk meningkatkan value added terhadap customer/next customer (dengan cost yang tetap) atau meningkatkan efisiensi di tempat kerjanya berdasarkan pemahamannya terhadap bisnis"], "deptHead": ["Mengidentifikasi peluang peningkatan yang dapat meningkatkan pelayanan terhadap customer/next customer (lintas divisi) atau meningkatkan efisiensi bagi perusahaan berdasarkan pemahamannya akan bisnis"]}]}],
+};
+/* ===================================================================== */
+
+
+const STORAGE_KEY = "idpDashboardData_v1";
+let DATA = loadData();
+let editModes = { career: false, competency: false, learning: false, behaviour: false };
+let expandedRoles = new Set(); // session-only UI state (not persisted): which role achievement lists are open
+let chartInstance = null;
+
+function loadData(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw){
+      const parsed = JSON.parse(raw);
+      // Migration: data saved before the Behaviour feature existed won't have this key.
+      if (!parsed.behaviours) parsed.behaviours = JSON.parse(JSON.stringify(DEFAULT_DATA.behaviours));
+      // Migration: aspirations used to be a fixed { near, mid, long } object; now it's an open-ended array.
+      if (parsed.aspirations && !Array.isArray(parsed.aspirations)){
+        const old = parsed.aspirations;
+        parsed.aspirations = ["near","mid","long"]
+          .filter(k => old[k])
+          .map(k => ({ when: old[k].when || "", text: old[k].text || "" }));
+      }
+      // Migration: each aspiration's "text" used to be a single string; now it's an array
+      // of descriptions. Normalizes both old string values and already-array values.
+      if (Array.isArray(parsed.aspirations)){
+        parsed.aspirations = parsed.aspirations.map(a => ({
+          when: a.when || "",
+          text: Array.isArray(a.text) ? a.text : (a.text ? [a.text] : [])
+        }));
+      }
+      // Migration: data saved before the Positioning field existed won't have this key.
+      if (parsed.positioning === undefined) parsed.positioning = "";
+      return parsed;
+    }
+  }catch(e){ console.warn("Failed to load saved data, using defaults.", e); }
+  // deep clone default so DEFAULT_DATA itself is never mutated
+  return JSON.parse(JSON.stringify(DEFAULT_DATA));
+}
+
+let saveTimer = null;
+function setStatus(msg, cls){
+  const el = document.getElementById("saveStatus");
+  el.textContent = msg;
+  el.classList.remove("show","err");
+  if (cls) el.classList.add(cls);
+  clearTimeout(saveTimer);
+  if (cls === "show"){
+    saveTimer = setTimeout(()=>{ el.classList.remove("show"); el.textContent="Changes are saved when you click \u201cFinish Editing\u201d"; }, 1600);
+  }
+}
+async function saveData(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA)); }catch(e){ console.warn("Local cache failed.", e); }
+  if (!sb || !cloudReady){ setStatus("Saved locally only (not signed in)", "err"); return; }
+  setStatus("Saving to database…");
+  try{
+    const { error } = await sb.rpc("idp_save_dashboard", { d: DATA });
+    if (error) throw error;
+    setStatus("Saved to database ✓", "show");
+  }catch(e){
+    console.warn("Cloud save failed.", e);
+    setStatus("Database save failed: " + (e.message || e) + ". Kept locally.", "err");
+  }
+}
+
+/* ---------------------------------------------------------------------
+   SUPABASE CONNECTION (publishable key is safe to expose; RLS protects data)
+   --------------------------------------------------------------------- */
+const SUPABASE_URL = "https://tidmzebkmmztnjnrgxtl.supabase.co";
+const SUPABASE_KEY = "sb_publishable_saTzFBWNgViiBw7sqdBG2A_rsZ4zaH3";
+let sb = null;
+let cloudReady = false;
+try{ sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); }catch(e){ console.warn("Supabase unavailable.", e); }
+
+function normalizeData(parsed){
+  if (!parsed.behaviours) parsed.behaviours = JSON.parse(JSON.stringify(DEFAULT_DATA.behaviours));
+  if (parsed.positioning === undefined || parsed.positioning === null) parsed.positioning = "";
+  ["roleHistory","aspirations","strengths","developmentAreas","competencies","priorities","learningRecords"].forEach(k=>{ if(!Array.isArray(parsed[k])) parsed[k]=[]; });
+  return parsed;
+}
+async function loadFromCloud(){
+  const { data, error } = await sb.rpc("idp_get_dashboard");
+  if (error) throw error;
+  if (!data) throw new Error("No portfolio is linked to this account yet.");
+  DATA = normalizeData(data);
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA)); }catch(e){}
+  cloudReady = true;
+  renderAll();
+}
+function showAuth(msg){
+  document.getElementById("authOverlay").classList.add("show");
+  document.getElementById("authError").textContent = msg || "";
+}
+async function afterSignIn(session){
+  try{
+    await loadFromCloud();
+    document.getElementById("authOverlay").classList.remove("show");
+    document.getElementById("syncUser").textContent = "Connected: " + (session.user.email || "");
+    document.getElementById("signOutBtn").style.display = "";
+    setStatus("Changes are saved when you click \u201cFinish Editing\u201d");
+  }catch(e){
+    cloudReady = false;
+    await sb.auth.signOut();
+    showAuth(e.message || String(e));
+  }
+}
+async function setupAuth(){
+  if (!sb){ setStatus("Database unavailable — working locally", "err"); return; }
+  document.getElementById("authForm").addEventListener("submit", async (ev)=>{
+    ev.preventDefault();
+    const btn = document.getElementById("authSubmit");
+    btn.disabled = true; document.getElementById("authError").textContent = "";
+    const { data, error } = await sb.auth.signInWithPassword({
+      email: document.getElementById("authEmail").value.trim(),
+      password: document.getElementById("authPass").value
+    });
+    btn.disabled = false;
+    if (error){ document.getElementById("authError").textContent = error.message; return; }
+    document.getElementById("authPass").value = "";
+    await afterSignIn(data.session);
+  });
+  document.getElementById("signOutBtn").addEventListener("click", async ()=>{
+    if (Object.values(editModes).some(Boolean) && !confirm("You are still editing. Sign out anyway?")) return;
+    await sb.auth.signOut();
+    cloudReady = false;
+    location.reload();
+  });
+  const { data } = await sb.auth.getSession();
+  if (data && data.session) await afterSignIn(data.session);
+  else showAuth("");
+}
+
+function initials(name){
+  return (name||"").trim().split(/\s+/).slice(0,2).map(w=>w[0]?.toUpperCase()||"").join("") || "–";
+}
+
+/* ---------------------------------------------------------------------
+   PROFILE
+   --------------------------------------------------------------------- */
+function renderProfile(){
+  document.getElementById("avatarInitials").textContent = initials(DATA.profile.name);
+  document.getElementById("sidebarName").textContent = DATA.profile.name;
+  document.getElementById("sidebarRole").textContent = DATA.profile.role + " · " + DATA.profile.department;
+  document.getElementById("ovName").textContent = DATA.profile.name.split(" ")[0] || DATA.profile.name;
+
+  document.getElementById("profileEditBlock").style.display = editModes.career ? "block" : "none";
+  const inName = document.getElementById("inProfileName");
+  const inRole = document.getElementById("inProfileRole");
+  const inDept = document.getElementById("inProfileDept");
+  inName.value = DATA.profile.name;
+  inRole.value = DATA.profile.role;
+  inDept.value = DATA.profile.department;
+  inName.oninput = e=>{ DATA.profile.name = e.target.value; renderProfile(); };
+  inRole.oninput = e=>{ DATA.profile.role = e.target.value; renderProfile(); };
+  inDept.oninput = e=>{ DATA.profile.department = e.target.value; renderProfile(); };
+}
+
+/* ---------------------------------------------------------------------
+   KPI
+   --------------------------------------------------------------------- */
+function renderKpis(){
+  const totalLearning = DATA.learningRecords.length;
+  const doneLearning = DATA.learningRecords.filter(r=>r.status==="Done").length;
+  const avgGap = DATA.competencies.length
+    ? (DATA.competencies.reduce((s,c)=>s+(Number(c.target)-Number(c.current)),0)/DATA.competencies.length).toFixed(1)
+    : "0.0";
+  const kpis = [
+    { label: "Roles Held", value: DATA.roleHistory.length, note: "Total assignments recorded" },
+    { label: "Active Priorities", value: DATA.priorities.length, note: "Development focus" },
+    { label: "Learning Activities", value: `${doneLearning}/${totalLearning}`, note: "Completed out of total recorded" },
+    { label: "Average Competency Gap", value: avgGap, note: "Scale 1–5, target − current" },
+  ];
+  document.getElementById("kpiRow").innerHTML = kpis.map(k=>`
+    <div class="kpi">
+      <div class="kpi-label">${k.label}</div>
+      <div class="kpi-value">${k.value}</div>
+      <div class="kpi-note">${k.note}</div>
+    </div>
+  `).join("");
+}
+
+/* ---------------------------------------------------------------------
+   PRIORITIES
+   --------------------------------------------------------------------- */
+function priorityCardHTML(p){
+  return `
+    <div class="priority-card">
+      <div class="priority-top">
+        <div class="priority-title">${p.title}</div>
+        <div class="priority-owner">${p.owner}</div>
+      </div>
+      <div class="priority-row"><b>Focus:</b> ${p.what}</div>
+      <div class="priority-row"><b>Steps &amp; timeline:</b> ${p.steps}</div>
+      <div class="priority-row"><b>Success measure:</b> ${p.metric}</div>
+    </div>`;
+}
+
+function renderPriorities(){
+  document.getElementById("priCount").textContent = `${DATA.priorities.length} priorities`;
+  document.getElementById("priorityList").innerHTML = DATA.priorities.map(priorityCardHTML).join("");
+  document.getElementById("priorityListFull").innerHTML = DATA.priorities.map(priorityCardHTML).join("");
+
+  const editWrap = document.getElementById("priorityEditList");
+  const addBtn = document.getElementById("addPriorityBtn");
+  editWrap.style.display = editModes.competency ? "block" : "none";
+  addBtn.style.display = editModes.competency ? "block" : "none";
+  if (!editModes.competency) return;
+
+  editWrap.innerHTML = DATA.priorities.map((p,i)=>`
+    <div class="edit-card">
+      <button class="del-btn" data-i="${i}" style="position:absolute;top:14px;right:14px;">×</button>
+      <div class="edit-card-grid">
+        <div class="f-row">
+          <div style="flex:2"><span class="f-label">Priority title</span><input class="f-input" data-field="title" data-i="${i}" value="${escAttr(p.title)}"></div>
+          <div style="flex:1"><span class="f-label">Owner</span><input class="f-input" data-field="owner" data-i="${i}" value="${escAttr(p.owner)}"></div>
+        </div>
+        <div><span class="f-label">Focus (what &amp; why)</span><textarea class="f-textarea" data-field="what" data-i="${i}">${esc(p.what)}</textarea></div>
+        <div><span class="f-label">Steps & timeline</span><textarea class="f-textarea" data-field="steps" data-i="${i}">${esc(p.steps)}</textarea></div>
+        <div><span class="f-label">Success measure</span><textarea class="f-textarea" data-field="metric" data-i="${i}">${esc(p.metric)}</textarea></div>
+      </div>
+    </div>
+  `).join("");
+
+  editWrap.querySelectorAll("[data-field]").forEach(el=>{
+    el.addEventListener("input", e=>{
+      const i = +e.target.dataset.i, f = e.target.dataset.field;
+      DATA.priorities[i][f] = e.target.value;
+      document.getElementById("priorityList").innerHTML = DATA.priorities.map(priorityCardHTML).join("");
+      document.getElementById("priorityListFull").innerHTML = DATA.priorities.map(priorityCardHTML).join("");
+    });
+  });
+  editWrap.querySelectorAll(".del-btn").forEach(btn=>{
+    btn.addEventListener("click", e=>{
+      DATA.priorities.splice(+e.target.dataset.i, 1);
+      renderPriorities(); renderKpis();
+    });
+  });
+  addBtn.onclick = ()=>{
+    DATA.priorities.push({ title:"New priority", what:"", steps:"", metric:"", owner:"" });
+    renderPriorities(); renderKpis();
+  };
+}
+
+/* ---------------------------------------------------------------------
+   RECENT LEARNING (overview)
+   --------------------------------------------------------------------- */
+// Sorts a copy of learning records by date, newest first. Records without a
+// date are pushed to the bottom rather than dropped.
+function sortLearningByDateDesc(records){
+  return [...records].sort((a, b) => {
+    const ad = a.date || "", bd = b.date || "";
+    if (!ad && !bd) return 0;
+    if (!ad) return 1;
+    if (!bd) return -1;
+    return bd.localeCompare(ad); // "YYYY-MM-DD" sorts correctly as a plain string
+  });
+}
+function renderRecentLearning(){
+  const recent = sortLearningByDateDesc(DATA.learningRecords).slice(0, 4);
+  document.getElementById("recentLearningBody").innerHTML = recent.map(r=>`
+    <tr>
+      <td>${esc(r.title)}${(r.person && needsCoachMentor(r.category)) ? `<div class="cell-sub">${esc(r.person)}</div>` : ""}</td>
+      <td><span class="cat-pill cat-${r.category}">${r.category}</span></td>
+      <td>${esc(formatFullDate(r.date))}</td>
+      <td class="status-${r.status}">${r.status === "Done" ? "Done" : "Ongoing"}</td>
+    </tr>
+  `).join("");
+}
+
+/* ---------------------------------------------------------------------
+   ROLE TIMELINE
+   --------------------------------------------------------------------- */
+const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function formatMonthYYYYMM(ym){
+  if (!ym) return "";
+  const parts = String(ym).split("-");
+  if (parts.length < 2) return ym;
+  const idx = parseInt(parts[1], 10) - 1;
+  return `${MONTHS_SHORT[idx] || ""} ${parts[0]}`.trim();
+}
+// Formats a full "YYYY-MM-DD" date as "1 Sep 2026". Falls back to the raw
+// string for anything that isn't a full date (e.g. legacy "Month Year" text).
+function formatFullDate(d){
+  if (!d) return "";
+  const parts = String(d).split("-");
+  if (parts.length < 3) return formatMonthYYYYMM(d) || d;
+  const [y, m, day] = parts;
+  const idx = parseInt(m, 10) - 1;
+  const dayNum = parseInt(day, 10);
+  if (!MONTHS_SHORT[idx] || !dayNum) return d;
+  return `${dayNum} ${MONTHS_SHORT[idx]} ${y}`;
+}
+function formatPeriod(r){
+  // New structured fields (periodStart / periodEnd as "YYYY-MM")
+  if (r.periodStart !== undefined){
+    const start = formatMonthYYYYMM(r.periodStart) || "—";
+    const end = r.current ? "Present" : (formatMonthYYYYMM(r.periodEnd) || "—");
+    let result = `${start} – ${end}`;
+    const endRef = r.current ? todayYearMonth() : r.periodEnd;
+    if (r.periodStart && endRef){
+      const months = calcDurationMonths(r.periodStart, endRef);
+      if (months) result += ` (${formatDuration(months)})`;
+    }
+    return result;
+  }
+  // Legacy free-text period field (from older exports)
+  return r.period || "";
+}
+function calcDurationMonths(startYM, endYM){
+  const s = String(startYM).split("-").map(Number);
+  const e = String(endYM).split("-").map(Number);
+  if (s.length < 2 || e.length < 2) return null;
+  const diff = (e[0]-s[0])*12 + (e[1]-s[1]) + 1; // inclusive of both start & end month
+  return diff > 0 ? diff : null;
+}
+function formatDuration(months){
+  const y = Math.floor(months/12);
+  const m = months % 12;
+  const parts = [];
+  if (y > 0) parts.push(`${y} ${y===1 ? "year" : "years"}`);
+  if (m > 0 || y === 0) parts.push(`${m} ${m===1 ? "month" : "months"}`);
+  return parts.join(" ");
+}
+function todayYearMonth(){
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+}
+function renderTimeline(){
+  renderTimelinePreview();
+  document.getElementById("roleTimeline").style.display = editModes.career ? "none" : "flex";
+
+  const editWrap = document.getElementById("roleEditList");
+  const addBtn = document.getElementById("addRoleBtn");
+  editWrap.style.display = editModes.career ? "block" : "none";
+  addBtn.style.display = editModes.career ? "block" : "none";
+  if (!editModes.career) return;
+
+  editWrap.innerHTML = DATA.roleHistory.map((r,i)=>`
+    <div class="edit-card">
+      <button class="del-btn" data-role-del="${i}" style="position:absolute;top:14px;right:14px;">×</button>
+      <div class="edit-card-grid" style="grid-template-columns:1.3fr 1fr;">
+        <div><span class="f-label">Role</span><input class="f-input" data-field="role" data-i="${i}" value="${escAttr(r.role)}"></div>
+        <div><span class="f-label">Department / Team</span><input class="f-input" data-field="assignment" data-i="${i}" value="${escAttr(r.assignment)}"></div>
+      </div>
+      <div class="f-row" style="margin-top:10px;">
+        <div style="flex:0 0 160px;"><span class="f-label">Grade</span><input class="f-input" data-field="grade" data-i="${i}" value="${escAttr(r.grade ?? "")}" placeholder="e.g. G7"></div>
+      </div>
+      <div class="f-row" style="margin-top:10px;align-items:end;">
+        <div style="flex:1"><span class="f-label">Start</span><input class="f-input" type="month" data-field="periodStart" data-i="${i}" value="${escAttr(r.periodStart ?? "")}" max="${todayYearMonth()}"></div>
+        <div style="flex:1"><span class="f-label">End</span><input class="f-input" type="month" data-field="periodEnd" data-i="${i}" value="${escAttr(r.periodEnd ?? "")}" max="${todayYearMonth()}" ${r.current ? "disabled" : ""}></div>
+        <label class="f-check"><input type="checkbox" data-field="current" data-i="${i}" ${r.current?"checked":""}> Current</label>
+      </div>
+      <div class="f-row" style="margin-top:10px;flex-direction:column;align-items:stretch;gap:6px;">
+        <span class="f-label">Key Accomplishment</span>
+        ${(r.achievements||[]).map((a,ai)=>`
+          <div class="f-row" style="margin:0;">
+            <input class="f-input" data-ach-role="${i}" data-ach-idx="${ai}" value="${escAttr(a)}" placeholder="Describe a key accomplishment">
+            <button class="del-btn" data-ach-del-role="${i}" data-ach-del-idx="${ai}">×</button>
+          </div>
+        `).join("")}
+        <button class="add-btn" data-ach-add-role="${i}" style="padding:8px;font-size:12.5px;">+ Add accomplishment</button>
+      </div>
+    </div>
+  `).join("");
+
+  editWrap.querySelectorAll("input[data-field]").forEach(el=>{
+    el.addEventListener(el.type === "checkbox" ? "change" : "input", e=>{
+      const i = +e.target.dataset.i, f = e.target.dataset.field;
+      if (f === "current"){
+        DATA.roleHistory[i].current = e.target.checked;
+        const endInput = editWrap.querySelector(`input[data-field="periodEnd"][data-i="${i}"]`);
+        if (endInput) endInput.disabled = e.target.checked;
+      } else {
+        DATA.roleHistory[i][f] = e.target.value;
+      }
+      renderTimelinePreview();
+    });
+  });
+  editWrap.querySelectorAll("[data-role-del]").forEach(btn=>{
+    btn.addEventListener("click", e=>{
+      DATA.roleHistory.splice(+e.target.dataset.roleDel, 1);
+      renderTimeline(); renderKpis();
+    });
+  });
+  editWrap.querySelectorAll("[data-ach-role]").forEach(el=>{
+    el.addEventListener("input", e=>{
+      const ri = +e.target.dataset.achRole, ai = +e.target.dataset.achIdx;
+      if (!DATA.roleHistory[ri].achievements) DATA.roleHistory[ri].achievements = [];
+      DATA.roleHistory[ri].achievements[ai] = e.target.value;
+      renderTimelinePreview();
+    });
+  });
+  editWrap.querySelectorAll("[data-ach-del-role]").forEach(btn=>{
+    btn.addEventListener("click", e=>{
+      const ri = +e.target.dataset.achDelRole, ai = +e.target.dataset.achDelIdx;
+      DATA.roleHistory[ri].achievements.splice(ai, 1);
+      renderTimeline();
+    });
+  });
+  editWrap.querySelectorAll("[data-ach-add-role]").forEach(btn=>{
+    btn.addEventListener("click", e=>{
+      const ri = +e.target.dataset.achAddRole;
+      if (!DATA.roleHistory[ri].achievements) DATA.roleHistory[ri].achievements = [];
+      DATA.roleHistory[ri].achievements.push("");
+      expandedRoles.add(ri);
+      renderTimeline();
+    });
+  });
+  addBtn.onclick = ()=>{
+    DATA.roleHistory.push({ role:"New Role", grade:"", assignment:"", periodStart:"", periodEnd:"", current:false, achievements:[] });
+    renderTimeline(); renderKpis();
+  };
+}
+
+// Sort key for role recency: an ongoing ("current") role always ranks first;
+// otherwise use the end date, falling back to the start date.
+function roleSortKey(r){
+  if (r.current) return "9999-99";
+  return r.periodEnd || r.periodStart || "";
+}
+function sortRolesByRecency(indexedRoles){
+  return [...indexedRoles].sort((a, b) => {
+    const ak = roleSortKey(a.r), bk = roleSortKey(b.r);
+    if (!ak && !bk) return 0;
+    if (!ak) return 1;
+    if (!bk) return -1;
+    return bk.localeCompare(ak);
+  });
+}
+
+// Rebuilds only the read-only timeline preview (not the edit form), so typing
+// in the edit inputs never loses focus. Displayed newest-first, but each
+// item keeps its original DATA.roleHistory index (i) so achievement
+// expand/collapse state and edit-form wiring stay correct regardless of order.
+function renderTimelinePreview(){
+  const indexed = DATA.roleHistory.map((r, i) => ({ r, i }));
+  const sorted = sortRolesByRecency(indexed);
+  document.getElementById("roleTimeline").innerHTML = sorted.map(({r, i})=>{
+    const achievements = (r.achievements || []).filter(a => a && a.trim());
+    const isOpen = expandedRoles.has(i);
+    return `
+    <div class="t-item ${r.current ? "current" : ""}">
+      <div class="t-item-main">
+        <div class="t-role">${esc(r.role)}${r.grade ? `<span class="t-grade">${esc(r.grade)}</span>` : ""}${r.current ? '<span class="t-tag">Current</span>' : ""}</div>
+        <div class="t-meta">${esc(r.assignment)} · ${esc(formatPeriod(r))}</div>
+      </div>
+      ${achievements.length ? `
+        <div class="t-item-side">
+          <button class="ach-toggle" data-toggle-role="${i}"><span class="ach-caret ${isOpen ? "open" : ""}">▸</span> Key Accomplishment (${achievements.length})</button>
+          <ul class="ach-list" style="display:${isOpen ? "flex" : "none"}">
+            ${achievements.map(a => `<li>${esc(a)}</li>`).join("")}
+          </ul>
+        </div>
+      ` : ""}
+    </div>`;
+  }).join("");
+
+  document.querySelectorAll("#roleTimeline .ach-toggle").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const idx = +btn.dataset.toggleRole;
+      if (expandedRoles.has(idx)) expandedRoles.delete(idx); else expandedRoles.add(idx);
+      renderTimelinePreview();
+    });
+  });
+}
+
+/* ---------------------------------------------------------------------
+   ASPIRATIONS
+   --------------------------------------------------------------------- */
+function renderPositioning(){
+  const viewBlock = document.getElementById("positioningView");
+  const editBlock = document.getElementById("positioningEdit");
+  const val = DATA.positioning || "";
+
+  document.getElementById("positioningText").innerHTML = val.trim()
+    ? esc(val)
+    : '<span class="positioning-empty">—</span>';
+  viewBlock.style.display = editModes.career ? "none" : "block";
+  editBlock.style.display = editModes.career ? "block" : "none";
+  if (!editModes.career) return;
+
+  const input = document.getElementById("inPositioning");
+  input.value = val;
+  input.oninput = e => { DATA.positioning = e.target.value; };
+}
+
+function renderAspirations(){
+  document.getElementById("aspireRow").innerHTML = DATA.aspirations.map(a => {
+    const texts = (a.text || []).filter(t => t && t.trim());
+    return `
+      <div class="aspire-card">
+        <div class="aspire-when">${esc(a.when)}</div>
+        ${texts.length
+          ? `<ul class="aspire-text-list">${texts.map(t => `<li>${esc(t)}</li>`).join("")}</ul>`
+          : `<div class="aspire-text-empty">—</div>`}
+      </div>`;
+  }).join("");
+  document.getElementById("aspireRow").style.display = editModes.career ? "none" : "grid";
+
+  const editRow = document.getElementById("aspireEditRow");
+  const addBtn = document.getElementById("addAspirationBtn");
+  editRow.style.display = editModes.career ? "grid" : "none";
+  if (addBtn) addBtn.style.display = editModes.career ? "block" : "none";
+  if (!editModes.career) return;
+
+  editRow.innerHTML = DATA.aspirations.map((a, i) => `
+      <div class="aspire-card" style="position:relative;">
+        <button class="del-btn" data-aspire-del="${i}" style="position:absolute;top:12px;right:12px;">×</button>
+        <span class="f-label">Time horizon</span>
+        <input class="f-input" data-i="${i}" data-field="when" value="${escAttr(a.when)}" style="margin-bottom:10px;">
+        <span class="f-label">Aspiration description</span>
+        ${(a.text || []).map((t, ti) => `
+          <div class="f-row" style="margin:4px 0;align-items:flex-start;">
+            <textarea class="f-textarea" style="min-height:44px;" data-aspire-text-i="${i}" data-aspire-text-ti="${ti}">${esc(t)}</textarea>
+            <button class="del-btn" data-aspire-text-del-i="${i}" data-aspire-text-del-ti="${ti}">×</button>
+          </div>
+        `).join("")}
+        <button class="add-btn" data-aspire-text-add="${i}" style="padding:7px;font-size:11.5px;margin-top:4px;">+ Add description</button>
+      </div>`).join("");
+
+  editRow.querySelectorAll("[data-field]").forEach(el=>{
+    el.addEventListener("input", e=>{
+      const i = +e.target.dataset.i, f = e.target.dataset.field;
+      DATA.aspirations[i][f] = e.target.value;
+    });
+  });
+  editRow.querySelectorAll("[data-aspire-text-i]").forEach(el=>{
+    el.addEventListener("input", e=>{
+      const i = +e.target.dataset.aspireTextI, ti = +e.target.dataset.aspireTextTi;
+      DATA.aspirations[i].text[ti] = e.target.value;
+    });
+  });
+  editRow.querySelectorAll("[data-aspire-text-del-i]").forEach(btn=>{
+    btn.addEventListener("click", e=>{
+      const i = +e.target.dataset.aspireTextDelI, ti = +e.target.dataset.aspireTextDelTi;
+      DATA.aspirations[i].text.splice(ti, 1);
+      renderAspirations();
+    });
+  });
+  editRow.querySelectorAll("[data-aspire-text-add]").forEach(btn=>{
+    btn.addEventListener("click", e=>{
+      const i = +e.target.dataset.aspireTextAdd;
+      if (!DATA.aspirations[i].text) DATA.aspirations[i].text = [];
+      DATA.aspirations[i].text.push("");
+      renderAspirations();
+    });
+  });
+  editRow.querySelectorAll("[data-aspire-del]").forEach(btn=>{
+    btn.addEventListener("click", e=>{
+      DATA.aspirations.splice(+e.target.dataset.aspireDel, 1);
+      renderAspirations();
+    });
+  });
+  if (addBtn){
+    addBtn.onclick = ()=>{
+      DATA.aspirations.push({ when: "", text: [] });
+      renderAspirations();
+    };
+  }
+}
+
+/* ---------------------------------------------------------------------
+   STRENGTHS / DEV AREAS
+   --------------------------------------------------------------------- */
+// Names of the top-level Behaviour groups from the Behaviour menu (e.g.
+// "Drive & Courage", "Learning & Innovation"), for use as dropdown options
+// in Strengths / Development Areas.
+function getBehaviourNames(){
+  return [...new Set(DATA.behaviours.map(g => (g.behaviour || "").trim()).filter(Boolean))];
+}
+
+function renderSimpleTagEditor(dataKey, listElId, editElId, addBtnId, dotClass){
+  document.getElementById(listElId).innerHTML = DATA[dataKey].map(s=>`
+    <div class="tag-row"><span class="dot ${dotClass}"></span>${esc(s)}</div>
+  `).join("");
+  document.getElementById(listElId).style.display = editModes.competency ? "none" : "flex";
+
+  const editWrap = document.getElementById(editElId);
+  const addBtn = document.getElementById(addBtnId);
+  editWrap.style.display = editModes.competency ? "flex" : "none";
+  editWrap.style.flexDirection = "column";
+  editWrap.style.gap = "8px";
+  addBtn.style.display = editModes.competency ? "block" : "none";
+  if (!editModes.competency) return;
+
+  const names = getBehaviourNames();
+
+  editWrap.innerHTML = DATA[dataKey].map((s,i)=>{
+    const current = s || "";
+    const isKnown = names.includes(current);
+    return `
+    <div class="f-row">
+      <select class="f-select" data-i="${i}">
+        <option value="" ${!current ? "selected" : ""}>Select a behaviour…</option>
+        ${current && !isKnown ? `<option value="${escAttr(current)}" selected>${esc(current)} (custom)</option>` : ""}
+        ${names.map(name => `<option value="${escAttr(name)}" ${name === current ? "selected" : ""}>${esc(name)}</option>`).join("")}
+      </select>
+      <button class="del-btn" data-i="${i}">×</button>
+    </div>`;
+  }).join("");
+
+  editWrap.querySelectorAll("select").forEach(el=>{
+    el.addEventListener("change", e=>{
+      DATA[dataKey][+e.target.dataset.i] = e.target.value;
+    });
+  });
+  editWrap.querySelectorAll(".del-btn").forEach(btn=>{
+    btn.addEventListener("click", e=>{
+      DATA[dataKey].splice(+e.target.dataset.i, 1);
+      renderSimpleTagEditor(dataKey, listElId, editElId, addBtnId, dotClass);
+    });
+  });
+  addBtn.onclick = ()=>{
+    DATA[dataKey].push("");
+    renderSimpleTagEditor(dataKey, listElId, editElId, addBtnId, dotClass);
+  };
+}
+function renderStrengthsAndGaps(){
+  renderSimpleTagEditor("strengths", "strengthList", "strengthEditList", "addStrengthBtn", "good");
+  renderSimpleTagEditor("developmentAreas", "devAreaList", "devAreaEditList", "addDevAreaBtn", "gold");
+}
+
+/* ---------------------------------------------------------------------
+   COMPETENCY CHART + EDITOR
+   --------------------------------------------------------------------- */
+function renderChart(){
+  const ctx = document.getElementById("competencyChart");
+  const cfg = {
+    type: "bar",
+    data: {
+      labels: DATA.competencies.map(c=>c.name),
+      datasets: [
+        { label: "Current Level", data: DATA.competencies.map(c=>Number(c.current)), backgroundColor: "#4C5FD5", borderRadius: 5, maxBarThickness: 22 },
+        { label: "Target", data: DATA.competencies.map(c=>Number(c.target)), backgroundColor: "#D69A3C", borderRadius: 5, maxBarThickness: 22 },
+      ]
+    },
+    options: {
+      indexAxis: "y",
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { min: 0, max: 5, ticks: { stepSize: 1, color: "#8B92A6", font:{size:12} }, grid: { color: "#EEF0F4" } },
+        y: { ticks: { color: "#12172B", font:{size:13, weight:500} }, grid: { display:false } }
+      }
+    }
+  };
+  if (chartInstance){ chartInstance.destroy(); }
+  chartInstance = new Chart(ctx, cfg);
+}
+
+function renderCompetencyEditor(){
+  const editWrap = document.getElementById("competencyEditList");
+  const addBtn = document.getElementById("addCompetencyBtn");
+  editWrap.style.display = editModes.competency ? "block" : "none";
+  addBtn.style.display = editModes.competency ? "block" : "none";
+  if (!editModes.competency) return;
+
+  editWrap.innerHTML = DATA.competencies.map((c,i)=>`
+    <div class="f-row" style="margin-bottom:8px;">
+      <input class="f-input" style="flex:2" data-field="name" data-i="${i}" value="${escAttr(c.name)}" placeholder="Competency name">
+      <div><span class="f-label">Current</span><input class="f-input f-num" type="number" min="1" max="5" step="1" data-field="current" data-i="${i}" value="${c.current}"></div>
+      <div><span class="f-label">Target</span><input class="f-input f-num" type="number" min="1" max="5" step="1" data-field="target" data-i="${i}" value="${c.target}"></div>
+      <button class="del-btn" data-i="${i}">×</button>
+    </div>
+  `).join("");
+
+  editWrap.querySelectorAll("[data-field]").forEach(el=>{
+    el.addEventListener("input", e=>{
+      const i = +e.target.dataset.i, f = e.target.dataset.field;
+      DATA.competencies[i][f] = (f === "name") ? e.target.value : Math.min(5, Math.max(1, Number(e.target.value) || 1));
+      renderChart();
+      renderKpis();
+    });
+  });
+  editWrap.querySelectorAll(".del-btn").forEach(btn=>{
+    btn.addEventListener("click", e=>{
+      DATA.competencies.splice(+e.target.dataset.i, 1);
+      renderChart(); renderCompetencyEditor(); renderKpis();
+    });
+  });
+  addBtn.onclick = ()=>{
+    DATA.competencies.push({ name:"New competency", current:3, target:4 });
+    renderChart(); renderCompetencyEditor(); renderKpis();
+  };
+}
+
+/* ---------------------------------------------------------------------
+   LEARNING RECORDS
+   --------------------------------------------------------------------- */
+const CATS = ["All","Training","Course","Book","Seminar","Mentoring","Coaching"];
+const CAT_OPTIONS = ["Training","Course","Book","Seminar","Mentoring","Coaching"];
+let activeCat = "All";
+
+function renderLearningFilters(){
+  document.getElementById("learningFilters").innerHTML = CATS.map(c=>`
+    <button class="filter-btn ${c===activeCat?"active":""}" data-cat="${c}">${c}</button>
+  `).join("");
+  document.querySelectorAll(".filter-btn").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      activeCat = btn.dataset.cat;
+      renderLearningFilters();
+      renderLearningTable();
+    });
+  });
+}
+
+function needsCoachMentor(category){
+  return category === "Coaching" || category === "Mentoring";
+}
+
+function renderLearningTable(){
+  const rows = sortLearningByDateDesc(DATA.learningRecords.filter(r => activeCat==="All" || r.category===activeCat));
+  document.getElementById("learningBody").innerHTML = rows.map(r=>`
+    <tr>
+      <td><span class="cat-pill cat-${r.category}">${r.category}</span></td>
+      <td>${esc(r.title)}${(r.person && needsCoachMentor(r.category)) ? `<div class="cell-sub">${esc(r.person)}</div>` : ""}</td>
+      <td>${esc(formatFullDate(r.date))}</td>
+      <td>${esc(r.takeaway)}</td>
+      <td class="status-${r.status}">${r.status === "Done" ? "Done" : "Ongoing"}</td>
+    </tr>
+  `).join("");
+
+  const editWrap = document.getElementById("learningEditList");
+  const addBtn = document.getElementById("addLearningBtn");
+  document.getElementById("learningFilters").style.display = editModes.learning ? "none" : "flex";
+  document.querySelector("#page-learning .table-wrap").style.display = editModes.learning ? "none" : "block";
+  editWrap.style.display = editModes.learning ? "block" : "none";
+  addBtn.style.display = editModes.learning ? "block" : "none";
+  if (!editModes.learning) return;
+
+  editWrap.innerHTML = DATA.learningRecords.map((r,i)=>`
+    <div class="edit-card">
+      <button class="del-btn" data-i="${i}" style="position:absolute;top:14px;right:14px;">×</button>
+      <div class="edit-card-grid" style="grid-template-columns:1fr 1fr;">
+        <div>
+          <span class="f-label">Category</span>
+          <select class="f-select" data-field="category" data-i="${i}">
+            ${CAT_OPTIONS.map(c=>`<option value="${c}" ${c===r.category?"selected":""}>${c}</option>`).join("")}
+          </select>
+        </div>
+        <div>
+          <span class="f-label">Status</span>
+          <select class="f-select" data-field="status" data-i="${i}">
+            <option value="Done" ${r.status==="Done"?"selected":""}>Done</option>
+            <option value="Ongoing" ${r.status==="Ongoing"?"selected":""}>Ongoing</option>
+          </select>
+        </div>
+        <div style="grid-column:1/-1;"><span class="f-label">Activity / Title</span><input class="f-input" data-field="title" data-i="${i}" value="${escAttr(r.title)}"></div>
+        ${needsCoachMentor(r.category) ? `<div style="grid-column:1/-1;"><span class="f-label">Coach/Mentor</span><input class="f-input" data-field="person" data-i="${i}" value="${escAttr(r.person ?? "")}" placeholder="Name of the coach or mentor"></div>` : ""}
+        <div><span class="f-label">Date</span><input class="f-input" type="date" data-field="date" data-i="${i}" value="${escAttr(r.date)}"></div>
+        <div><span class="f-label">Key takeaway</span><input class="f-input" data-field="takeaway" data-i="${i}" value="${escAttr(r.takeaway)}"></div>
+      </div>
+    </div>
+  `).join("");
+
+  editWrap.querySelectorAll("[data-field]").forEach(el=>{
+    const eventName = el.tagName === "SELECT" ? "change" : "input";
+    el.addEventListener(eventName, e=>{
+      const i = +e.target.dataset.i, f = e.target.dataset.field;
+      DATA.learningRecords[i][f] = e.target.value;
+      if (f === "category"){
+        renderLearningTable(); // rebuild this card so the Coach/Mentor field shows/hides correctly
+      }
+      renderRecentLearning();
+      renderKpis();
+    });
+  });
+  editWrap.querySelectorAll(".del-btn").forEach(btn=>{
+    btn.addEventListener("click", e=>{
+      DATA.learningRecords.splice(+e.target.dataset.i, 1);
+      renderLearningTable(); renderRecentLearning(); renderKpis();
+    });
+  });
+  addBtn.onclick = ()=>{
+    DATA.learningRecords.push({ category:"Training", title:"New activity", date:"", takeaway:"", status:"Ongoing", person:"" });
+    renderLearningTable(); renderRecentLearning(); renderKpis();
+  };
+}
+
+/* ---------------------------------------------------------------------
+   ESCAPING HELPERS
+   --------------------------------------------------------------------- */
+function esc(str){
+  return String(str ?? "").replace(/[&<>]/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[ch]));
+}
+function escAttr(str){
+  return String(str ?? "").replace(/[&<>"]/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[ch]));
+}
+
+/* ---------------------------------------------------------------------
+   NAV, EDIT TOGGLE, EXPORT / IMPORT / RESET
+   --------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------
+   BEHAVIOUR (view: collapsible accordion — edit: full editable form)
+   --------------------------------------------------------------------- */
+let expandedBehaviours = new Set();
+const BHV_LEVELS = [["officer","Officer"],["executive","Executive"],["deptHead","Dept. Head"]];
+
+function renderBehaviour(){
+  const wrap = document.getElementById("behaviourList");
+
+  if (!editModes.behaviour){
+    wrap.innerHTML = DATA.behaviours.map((g, gi) => {
+      const isOpen = expandedBehaviours.has(gi);
+      const levelCol = (label, items) => `
+        <div>
+          <div class="bhv-level-label">${esc(label)}</div>
+          ${items && items.length
+            ? `<ul class="bhv-level-list">${items.map(t => `<li>${esc(t)}</li>`).join("")}</ul>`
+            : `<div class="bhv-level-empty">—</div>`}
+        </div>`;
+      return `
+      <div class="bhv-group">
+        <button class="bhv-header" data-bhv-toggle="${gi}">
+          <span class="bhv-caret ${isOpen ? "open" : ""}">▸</span>
+          <div class="bhv-header-text">
+            <div class="bhv-name">${esc(g.behaviour)}</div>
+            <div class="bhv-desc">${esc(g.description)}</div>
+          </div>
+          <span class="bhv-count">${g.elements.length} element${g.elements.length === 1 ? "" : "s"}</span>
+        </button>
+        <div class="bhv-body ${isOpen ? "open" : ""}">
+          ${g.elements.map(el => `
+            <div class="bhv-element">
+              <div class="bhv-element-name">${esc(el.element)}</div>
+              <div class="bhv-levels">
+                ${BHV_LEVELS.map(([key,label]) => levelCol(label, el[key])).join("")}
+              </div>
+            </div>
+          `).join("")}
+        </div>
+      </div>`;
+    }).join("");
+
+    wrap.querySelectorAll("[data-bhv-toggle]").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        const gi = +btn.dataset.bhvToggle;
+        if (expandedBehaviours.has(gi)) expandedBehaviours.delete(gi); else expandedBehaviours.add(gi);
+        renderBehaviour();
+      });
+    });
+    return;
+  }
+
+  // ---- EDIT MODE ----
+  const levelEditor = (label, key, gi, ei, items) => `
+    <div>
+      <span class="f-label">${esc(label)}</span>
+      ${(items || []).map((t, ii) => `
+        <div class="f-row" style="margin:4px 0;">
+          <input class="f-input" data-bhv-level="${key}" data-bhv-gi="${gi}" data-bhv-ei="${ei}" data-bhv-ii="${ii}" value="${escAttr(t)}">
+          <button class="del-btn" data-bhv-del-level-key="${key}" data-bhv-del-level-gi="${gi}" data-bhv-del-level-ei="${ei}" data-bhv-del-level-ii="${ii}">×</button>
+        </div>
+      `).join("")}
+      <button class="add-btn" style="padding:6px;font-size:11.5px;" data-bhv-add-level-key="${key}" data-bhv-add-level-gi="${gi}" data-bhv-add-level-ei="${ei}">+ Add</button>
+    </div>`;
+
+  wrap.innerHTML = DATA.behaviours.map((g, gi) => `
+    <div class="edit-card">
+      <button class="del-btn" data-bhv-del-group="${gi}" style="position:absolute;top:14px;right:14px;">×</button>
+      <div><span class="f-label">Behaviour name</span><input class="f-input" data-bhv-group-field="behaviour" data-bhv-gi="${gi}" value="${escAttr(g.behaviour)}"></div>
+      <div style="margin-top:10px;"><span class="f-label">Description</span><textarea class="f-textarea" data-bhv-group-field="description" data-bhv-gi="${gi}">${esc(g.description)}</textarea></div>
+
+      <div style="margin-top:16px;">
+        <span class="f-label">Elements</span>
+        ${g.elements.map((el, ei) => `
+          <div class="edit-card" style="margin-top:8px;background:var(--paper);">
+            <button class="del-btn" data-bhv-del-el-gi="${gi}" data-bhv-del-el-ei="${ei}" style="position:absolute;top:14px;right:14px;">×</button>
+            <span class="f-label">Element name</span>
+            <textarea class="f-textarea" style="min-height:40px;" data-bhv-el-field="element" data-bhv-gi="${gi}" data-bhv-ei="${ei}">${esc(el.element)}</textarea>
+            <div class="bhv-levels" style="margin-top:10px;">
+              ${BHV_LEVELS.map(([key,label]) => levelEditor(label, key, gi, ei, el[key])).join("")}
+            </div>
+          </div>
+        `).join("")}
+        <button class="add-btn" data-bhv-add-el="${gi}" style="margin-top:8px;">+ Add element</button>
+      </div>
+    </div>
+  `).join("") + `<button class="add-btn" data-bhv-add-group="1">+ Add behaviour</button>`;
+
+  wrap.querySelectorAll("[data-bhv-group-field]").forEach(el=>{
+    el.addEventListener("input", e=>{
+      const gi = +e.target.dataset.bhvGi, f = e.target.dataset.bhvGroupField;
+      DATA.behaviours[gi][f] = e.target.value;
+    });
+  });
+  wrap.querySelectorAll("[data-bhv-el-field]").forEach(el=>{
+    el.addEventListener("input", e=>{
+      const gi = +e.target.dataset.bhvGi, ei = +e.target.dataset.bhvEi, f = e.target.dataset.bhvElField;
+      DATA.behaviours[gi].elements[ei][f] = e.target.value;
+    });
+  });
+  wrap.querySelectorAll("[data-bhv-level]").forEach(el=>{
+    el.addEventListener("input", e=>{
+      const key = e.target.dataset.bhvLevel, gi = +e.target.dataset.bhvGi, ei = +e.target.dataset.bhvEi, ii = +e.target.dataset.bhvIi;
+      DATA.behaviours[gi].elements[ei][key][ii] = e.target.value;
+    });
+  });
+  wrap.querySelectorAll("[data-bhv-del-group]").forEach(btn=>{
+    btn.addEventListener("click", e=>{
+      DATA.behaviours.splice(+e.target.dataset.bhvDelGroup, 1);
+      renderBehaviour();
+    });
+  });
+  wrap.querySelectorAll("[data-bhv-del-el-gi]").forEach(btn=>{
+    btn.addEventListener("click", e=>{
+      const gi = +e.target.dataset.bhvDelElGi, ei = +e.target.dataset.bhvDelElEi;
+      DATA.behaviours[gi].elements.splice(ei, 1);
+      renderBehaviour();
+    });
+  });
+  wrap.querySelectorAll("[data-bhv-del-level-key]").forEach(btn=>{
+    btn.addEventListener("click", e=>{
+      const d = e.target.dataset;
+      DATA.behaviours[+d.bhvDelLevelGi].elements[+d.bhvDelLevelEi][d.bhvDelLevelKey].splice(+d.bhvDelLevelIi, 1);
+      renderBehaviour();
+    });
+  });
+  wrap.querySelectorAll("[data-bhv-add-level-key]").forEach(btn=>{
+    btn.addEventListener("click", e=>{
+      const d = e.target.dataset;
+      DATA.behaviours[+d.bhvAddLevelGi].elements[+d.bhvAddLevelEi][d.bhvAddLevelKey].push("");
+      renderBehaviour();
+    });
+  });
+  wrap.querySelectorAll("[data-bhv-add-el]").forEach(btn=>{
+    btn.addEventListener("click", e=>{
+      DATA.behaviours[+e.target.dataset.bhvAddEl].elements.push({ element: "New element", officer: [], executive: [], deptHead: [] });
+      renderBehaviour();
+    });
+  });
+  const addGroupBtn = wrap.querySelector("[data-bhv-add-group]");
+  if (addGroupBtn){
+    addGroupBtn.addEventListener("click", ()=>{
+      DATA.behaviours.push({ behaviour: "New Behaviour", description: "", elements: [] });
+      renderBehaviour();
+    });
+  }
+}
+
+function setupNav(){
+  document.querySelectorAll(".nav-btn").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      document.querySelectorAll(".nav-btn").forEach(b=>b.classList.remove("active"));
+      document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById("page-"+btn.dataset.page).classList.add("active");
+    });
+  });
+}
+
+const EDIT_PAGE_LABELS = { career: "Career & Role", competency: "Competency", learning: "Learning", behaviour: "Behaviour" };
+
+function syncEditToggleButtons(){
+  document.querySelectorAll("[data-edit-page]").forEach(btn=>{
+    const page = btn.dataset.editPage;
+    const on = editModes[page];
+    btn.classList.toggle("on", on);
+    const label = btn.querySelector(".page-edit-label");
+    if (label) label.textContent = on ? "Finish Editing" : "Edit";
+  });
+}
+
+function setupPageEditToggles(){
+  const statusEl = document.getElementById("saveStatus");
+  document.querySelectorAll("[data-edit-page]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const page = btn.dataset.editPage;
+      const wasEditing = editModes[page];
+      editModes[page] = !editModes[page];
+      renderAll();
+      if (wasEditing && !editModes[page]){
+        // "Finish Editing" was clicked for this page — this is the only moment its edits are persisted.
+        saveData();
+      } else if (editModes[page]){
+        statusEl.textContent = `Editing ${EDIT_PAGE_LABELS[page]} — click “Finish Editing” before switching tabs/reloading`;
+        statusEl.classList.remove("show");
+      } else {
+        statusEl.textContent = "";
+      }
+    });
+  });
+}
+
+function setupDataActions(){
+  document.getElementById("exportBtn").addEventListener("click", ()=>{
+    const blob = new Blob([JSON.stringify(DATA, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "portfolio-data.json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
+
+  const fileInput = document.getElementById("importFile");
+  document.getElementById("importBtn").addEventListener("click", ()=> fileInput.click());
+  fileInput.addEventListener("change", (e)=>{
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try{
+        const parsed = JSON.parse(reader.result);
+        DATA = parsed;
+        saveData();
+        renderAll();
+        alert("Data imported successfully.");
+      }catch(err){
+        alert("Invalid JSON file. Make sure this is a file exported from this dashboard.");
+      }
+      fileInput.value = "";
+    };
+    reader.readAsText(file);
+  });
+
+  document.getElementById("resetBtn").addEventListener("click", ()=>{
+    if (confirm("Reset all data to the default values? This will also overwrite the data in the database.")){
+      localStorage.removeItem(STORAGE_KEY);
+      DATA = JSON.parse(JSON.stringify(DEFAULT_DATA));
+      saveData();
+      renderAll();
+    }
+  });
+}
+
+/* ---------------------------------------------------------------------
+   RENDER ALL
+   --------------------------------------------------------------------- */
+function renderAll(){
+  renderProfile();
+  renderKpis();
+  renderPriorities();
+  renderRecentLearning();
+  renderTimeline();
+  renderPositioning();
+  renderAspirations();
+  renderStrengthsAndGaps();
+  renderChart();
+  renderCompetencyEditor();
+  renderLearningFilters();
+  renderLearningTable();
+  renderBehaviour();
+  syncEditToggleButtons();
+}
+
+function setupUnloadSafetyNet(){
+  // Manual save still only happens when "Finish Editing" is clicked (per user's request).
+  // This is only a safety net so in-progress edits aren't silently lost if the tab
+  // is closed, refreshed, or navigated away from while any page is still in edit mode.
+  const persistIfEditing = ()=>{
+    if (Object.values(editModes).some(Boolean)) saveData();
+  };
+  window.addEventListener("beforeunload", persistIfEditing);
+  document.addEventListener("visibilitychange", ()=>{
+    if (document.visibilityState === "hidden") persistIfEditing();
+  });
+}
+
+function init(){
+  setupNav();
+  setupPageEditToggles();
+  setupDataActions();
+  setupUnloadSafetyNet();
+  renderAll();
+  setupAuth();
+}
+init();
+</script>
+</body>
+</html>
